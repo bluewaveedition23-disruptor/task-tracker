@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Task Tracker & Workflow System (GitHub + Firebase)</title>
+  <style>
+    :root {
+      --primary-blue: #1e3a8a;
+      --card-blue: #1d4ed8;
+      --light-bg: #f8fafc;
+      --border-color: #cbd5e1;
+      --green-check: #22c55e;
+      --text-color: #0f172a;
+      --danger-red: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--light-bg);
+      color: var(--text-color);
+      padding-bottom: 40px;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      background: #ffffff;
+      border-bottom: 2px solid var(--border-color);
+      padding: 12px 20px;
+      z-index: 100;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .auth-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .auth-bar select, .auth-bar button {
+      padding: 6px 12px;
+      font-size: 14px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary {
+      background-color: #e2e8f0;
+      color: #334155;
+      cursor: pointer;
+      border: none;
+      font-weight: 600;
+    }
+
+    .btn-secondary:hover {
+      background-color: #cbd5e1;
+    }
+
+    .pinned-tasks {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .pinned-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background-color: var(--primary-blue);
+      color: #ffffff;
+      padding: 10px 16px;
+      border-radius: 8px;
+      min-width: 140px;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .pinned-card:hover {
+      transform: translateY(-2px);
+    }
+
+    .task-num {
+      width: 26px;
+      height: 26px;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    .task-title {
+      font-weight: 600;
+      font-size: 15px;
+      color: #fbbf24; 
+      flex-grow: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 120px;
+    }
+
+    .check-icon {
+      width: 20px;
+      height: 20px;
+      background-color: var(--green-check);
+      border-radius: 50%;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .pinned-card.completed .check-icon {
+      display: flex;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 24px auto;
+      padding: 0 16px;
+    }
+
+    .section-card {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .section-card h2 {
+      font-size: 18px;
+      margin-bottom: 12px;
+      color: var(--primary-blue);
+    }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    label {
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    input[type="text"], textarea, select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    button.btn-primary {
+      background-color: var(--primary-blue);
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      align-self: flex-start;
+    }
+
+    button.btn-primary:hover {
+      background-color: var(--card-blue);
+    }
+
+    .task-detail {
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px;
+      margin-bottom: 12px;
+      background: #fafafa;
+      position: relative;
+    }
+
+    .task-detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .status-badge {
+      font-size: 12px;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-weight: bold;
+    }
+
+    .status-pending { background: #fef08a; color: #854d0e; }
+    .status-completed { background: #bbf7d0; color: #166534; }
+
+    .data-feed {
+      margin-top: 8px;
+      padding: 8px;
+      background: #ffffff;
+      border-left: 3px solid var(--primary-blue);
+      font-size: 13px;
+    }
+
+    .btn-delete {
+      background: none;
+      border: none;
+      color: var(--danger-red);
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+    .btn-delete:hover {
+      text-decoration: underline;
+    }
+
+    #loading-state {
+      text-align: center;
+      padding: 20px;
+      color: #64748b;
+      font-style: italic;
+    }
+  </style>
+
+  <!-- Firebase Integration Layer -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // TODO: Replace with your Firebase project keys
+    const firebaseConfig = {
+      apiKey: "AIzaSyB4z1cqP__KRlhOzaJ3lSfPVBqBgUxC2fw",
+      authDomain: "tasktracker-52958.firebaseapp.com",
+      databaseURL: "https://github.com/bluewaveedition23-disruptor/task-tracker.git",
+      projectId: "tasktracker-52958",
+      storageBucket: "tasktracker-52958.firebasestorage.app",
+      messagingSenderId: "285472306795",
+      appId: "1:285472306795:web:110b6f7db6bc6656ed632e"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    let tasks = [];
+    let currentUserRole = 'manager';
+
+    const defaultTasks = {
+      "1": { id: 1, title: 'Identify', desc: 'Identify risk factors.', status: 'completed', data: 'Initial risk factors identified across departments.', updatedBy: 'Worker' },
+      "2": { id: 2, title: 'Assess', desc: 'Assess impact and severity.', status: 'completed', data: 'High priority assigned to data security section.', updatedBy: 'Worker' },
+      "3": { id: 3, title: 'Mitigate', desc: 'Execute mitigation plan.', status: 'completed', data: 'Mitigation controls applied.', updatedBy: 'Worker' },
+      "4": { id: 4, title: 'Monitor', desc: 'Continuous monitoring.', status: 'completed', data: 'System monitoring active.', updatedBy: 'Worker' },
+      "5": { id: 5, title: 'Report', desc: 'Generate risk report.', status: 'pending', data: '', updatedBy: '' }
+    };
+
+    // Real-time synchronization listener
+    const tasksRef = ref(db, 'tasks');
+    onValue(tasksRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        tasks = Object.values(data);
+      } else {
+        set(tasksRef, defaultTasks);
+        tasks = Object.values(defaultTasks);
+      }
+      document.getElementById('loading-state').style.display = 'none';
+      refreshUI();
+    });
+
+    window.switchRole = function() {
+      currentUserRole = document.getElementById('role-select').value;
+      const userDisplay = document.getElementById('user-display');
+      
+      if (currentUserRole === 'manager') {
+        userDisplay.textContent = 'Task Creator (Manager)';
+        document.getElementById('manager-panel').style.display = 'block';
+        document.getElementById('worker-panel').style.display = 'none';
+      } else {
+        userDisplay.textContent = 'Work Executor (Worker)';
+        document.getElementById('manager-panel').style.display = 'none';
+        document.getElementById('worker-panel').style.display = 'block';
+      }
+      populateWorkerDropdown();
+    }
+
+    window.resetDefaultTasks = function() {
+      if (confirm('Are you sure you want to reset all tasks to default?')) {
+        set(tasksRef, defaultTasks);
+      }
+    }
+
+    window.handleAddTask = function(e) {
+      e.preventDefault();
+      const titleInput = document.getElementById('task-title-input');
+      const descInput = document.getElementById('task-desc-input');
+      const newId = Date.now();
+
+      const newTask = {
+        id: newId,
+        title: titleInput.value.trim(),
+        desc: descInput.value.trim(),
+        status: 'pending',
+        data: '',
+        updatedBy: ''
+      };
+
+      set(ref(db, 'tasks/' + newId), newTask);
+      titleInput.value = '';
+      descInput.value = '';
+    }
+
+    window.handleFeedData = function(e) {
+      e.preventDefault();
+      const taskId = document.getElementById('task-select').value;
+      const dataText = document.getElementById('work-data-input').value.trim();
+
+      if (!taskId) return;
+
+      const taskObj = tasks.find(t => t.id == taskId);
+      if (taskObj) {
+        taskObj.status = 'completed';
+        taskObj.data = dataText;
+        taskObj.updatedBy = 'Worker';
+        
+        set(ref(db, 'tasks/' + taskId), taskObj);
+      }
+
+      document.getElementById('work-data-input').value = '';
+    }
+
+    window.deleteTask = function(id) {
+      if (confirm('Are you sure you want to delete this task?')) {
+        remove(ref(db, 'tasks/' + id));
+      }
+    }
+
+    function renderPinnedTasks() {
+      const container = document.getElementById('pinned-tasks-list');
+      container.innerHTML = '';
+
+      if (tasks.length === 0) {
+        container.innerHTML = '<span style="font-size:13px; color:#64748b; padding: 6px 0;">No active tasks pinned.</span>';
+        return;
+      }
+
+      tasks.forEach((task, index) => {
+        const card = document.createElement('div');
+        card.className = `pinned-card ${task.status === 'completed' ? 'completed' : ''}`;
+        card.onclick = () => scrollToTask(task.id);
+
+        card.innerHTML = `
+          <div class="task-num">${index + 1}</div>
+          <div class="task-title">${escapeHtml(task.title)}</div>
+          <div class="check-icon">✓</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderTasksList() {
+      const container = document.getElementById('tasks-container');
+      container.innerHTML = '';
+
+      if (tasks.length === 0) {
+        container.innerHTML = '<p style="color: #64748b; font-size: 14px;">No tasks available.</p>';
+        return;
+      }
+
+      tasks.forEach((task, index) => {
+        const detailCard = document.createElement('div');
+        detailCard.className = 'task-detail';
+        detailCard.id = `task-card-${task.id}`;
+
+        detailCard.innerHTML = `
+          <div class="task-detail-header">
+            <strong>#${index + 1} - ${escapeHtml(task.title)}</strong>
+            <span class="status-badge ${task.status === 'completed' ? 'status-completed' : 'status-pending'}">
+              ${task.status === 'completed' ? '✓ Attended' : 'Pending'}
+            </span>
+          </div>
+          <p style="font-size: 14px; color: #475569;">${escapeHtml(task.desc || 'No description provided.')}</p>
+          ${task.data ? `
+            <div class="data-feed">
+              <strong>Submitted Data (${escapeHtml(task.updatedBy || 'Worker')}):</strong>
+              <p>${escapeHtml(task.data)}</p>
+            </div>
+          ` : ''}
+          <button class="btn-delete" onclick="deleteTask(${task.id})">Delete Task</button>
+        `;
+        container.appendChild(detailCard);
+      });
+    }
+
+    function populateWorkerDropdown() {
+      const select = document.getElementById('task-select');
+      select.innerHTML = '<option value="">-- Select Task --</option>';
+
+      tasks.forEach((task, idx) => {
+        const opt = document.createElement('option');
+        opt.value = task.id;
+        opt.textContent = `#${idx + 1} ${task.title} (${task.status === 'completed' ? 'Attended' : 'Pending'})`;
+        select.appendChild(opt);
+      });
+    }
+
+    function scrollToTask(id) {
+      const el = document.getElementById(`task-card-${id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/"/g, "&quot;")
+                        .replace(/'/g, "&#039;");
+    }
+
+    function refreshUI() {
+      renderPinnedTasks();
+      renderTasksList();
+      populateWorkerDropdown();
+    }
+  </script>
+</head>
+<body>
+
+  <header>
+    <div class="auth-bar">
+      <div>
+        <strong>Current User:</strong>
+        <span id="user-display">Manager (Admin)</span>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button class="btn-secondary" onclick="resetDefaultTasks()">Reset Workflow</button>
+        <div>
+          <label for="role-select" style="font-weight:normal; margin-right:6px;">Switch Role:</label>
+          <select id="role-select" onchange="switchRole()">
+            <option value="manager">Task Creator (Manager)</option>
+            <option value="worker">Work Executor (Worker)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="pinned-tasks" id="pinned-tasks-list"></div>
+  </header>
+
+  <div class="container">
+    <div id="loading-state">Connecting to real-time database...</div>
+
+    <div id="manager-panel" class="section-card">
+      <h2>Creator Panel: Enter New Task</h2>
+      <form id="add-task-form" onsubmit="handleAddTask(event)">
+        <div>
+          <label>Task Title</label>
+          <input type="text" id="task-title-input" placeholder="e.g. Identify, Assess, Mitigate..." required />
+        </div>
+        <div>
+          <label>Task Instructions / Description</label>
+          <textarea id="task-desc-input" rows="2" placeholder="Detail what work needs to be performed..."></textarea>
+        </div>
+        <button type="submit" class="btn-primary">Pin Task to Top</button>
+      </form>
+    </div>
+
+    <div id="worker-panel" class="section-card" style="display: none;">
+      <h2>Executor Panel: Attend Task & Feed Data</h2>
+      <form id="feed-data-form" onsubmit="handleFeedData(event)">
+        <div>
+          <label>Select Task to Work On</label>
+          <select id="task-select" required></select>
+        </div>
+        <div>
+          <label>Work Log / Data Entry</label>
+          <textarea id="work-data-input" rows="3" placeholder="Enter output findings, report details, or data here..." required></textarea>
+        </div>
+        <button type="submit" class="btn-primary">Submit Data & Mark Attended ✓</button>
+      </form>
+    </div>
+
+    <div class="section-card">
+      <h2>All Tasks & Fed Data</h2>
+      <div id="tasks-container"></div>
+    </div>
+  </div>
+</body>
+</html>
